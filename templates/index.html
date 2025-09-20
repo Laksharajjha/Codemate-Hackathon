@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>PyTerminal</title>
+    <style>
+        /* --- Basic Setup --- */
+        body {
+            background-color: #282a36; /* Dracula theme background */
+            color: #f8f82f; /* Light text */
+            font-family: 'Consolas', 'Menlo', 'Courier New', monospace;
+            font-size: 16px;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* --- Typewriter Header --- */
+        .header-text {
+            font-size: 2em;
+            color: #50fa7b; /* Bright Green */
+            margin-bottom: 5px;
+            border-right: 2px solid #50fa7b; /* Blinking cursor for typewriter */
+            white-space: nowrap;
+            overflow: hidden;
+            animation: typing-cursor-blink 0.7s step-end infinite;
+        }
+        
+        .suggestions {
+            font-size: 0.9em;
+            color: #bd93f9; /* Purple */
+            margin-bottom: 20px;
+            min-height: 20px; /* Reserve space */
+        }
+
+        /* --- Terminal Window Container --- */
+        .terminal-window {
+            width: 80%;
+            max-width: 900px;
+            background-color: #21222C;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+        }
+
+        /* --- Fake Window Header --- */
+        .terminal-header {
+            background-color: #44475a;
+            padding: 8px;
+            display: flex;
+            align-items: center;
+        }
+
+        .header-button {
+            height: 12px;
+            width: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .red { background-color: #ff5555; }
+        .yellow { background-color: #f1fa8c; }
+        .green { background-color: #50fa7b; }
+
+        /* --- Terminal Body & Output --- */
+        .terminal-body {
+            padding: 15px;
+        }
+
+        #output {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            min-height: 300px;
+            max-height: 400px;
+            overflow-y: auto;
+            margin-bottom: 15px;
+        }
+
+        /* --- Input Form --- */
+        form {
+            display: flex;
+            align-items: center;
+        }
+
+        .prompt {
+            color: #50fa7b;
+            margin-right: 8px;
+        }
+
+        input {
+            background-color: transparent;
+            color: #f8f8f2;
+            border: none;
+            width: 100%;
+            font-family: inherit;
+            font-size: inherit;
+            outline: none;
+            /* REMOVED the blinking cursor from the input */
+        }
+
+        /* --- Footer --- */
+        footer {
+            margin-top: 30px;
+            color: #6272a4; /* Faded color */
+            font-size: 0.9em;
+        }
+        
+        /* --- Animation Keyframes --- */
+        @keyframes typing-cursor-blink {
+            from, to { border-right-color: #50fa7b; }
+            50% { border-right-color: transparent; }
+        }
+
+    </style>
+</head>
+<body>
+    <h1 id="typewriter-title" class="header-text"></h1>
+    <p id="typewriter-suggestions" class="suggestions"></p>
+
+    <div class="terminal-window">
+        <div class="terminal-header">
+            <div class="header-button red"></div>
+            <div class="header-button yellow"></div>
+            <div class="header-button green"></div>
+        </div>
+        <div class="terminal-body">
+            <pre id="output">{{ output }}</pre>
+            <form method="post" id="command-form">
+                <span class="prompt">$</span>
+                <input type="text" name="command" id="command-input" autofocus autocomplete="off">
+            </form>
+        </div>
+    </div>
+
+    <footer>Made with ❤️ by Laksharaj Jha</footer>
+
+    <!-- JavaScript for all features -->
+    <script>
+        // --- TYPEWRITER EFFECT SCRIPT ---
+        const titleElement = document.getElementById('typewriter-title');
+        const suggestionsElement = document.getElementById('typewriter-suggestions');
+        
+        const titleText = "Smart Command Terminal";
+        const suggestions = [
+            "Try: 'create a file called test.txt'",
+            "Try: 'what is the current directory?'",
+            "Try: 'delete the file test.txt'",
+            "Try: 'show me my system status'"
+        ];
+        
+        let suggestionIndex = 0;
+
+        function typeWriter(element, text, i, onComplete) {
+            if (i < text.length) {
+                element.innerHTML = text.substring(0, i + 1);
+                setTimeout(() => typeWriter(element, text, i + 1, onComplete), 100);
+            } else if (onComplete) {
+                onComplete();
+            }
+        }
+
+        function retractWriter(element, onComplete) {
+            if (element.innerHTML.length > 0) {
+                element.innerHTML = element.innerHTML.slice(0, -1);
+                setTimeout(() => retractWriter(element, onComplete), 50);
+            } else if (onComplete) {
+                onComplete();
+            }
+        }
+        
+        function startSuggestions() {
+            suggestionsElement.innerHTML = '';
+            typeWriter(suggestionsElement, suggestions[suggestionIndex], 0, () => {
+                setTimeout(() => {
+                    suggestionIndex = (suggestionIndex + 1) % suggestions.length;
+                    startSuggestions();
+                }, 3000); // Wait 3 seconds before showing the next suggestion
+            });
+        }
+
+        // Start the whole sequence
+        typeWriter(titleElement, titleText, 0, () => {
+            setTimeout(() => {
+                retractWriter(titleElement, () => {
+                    titleElement.style.borderRight = 'none'; // Hide cursor after retracting
+                    startSuggestions();
+                });
+            }, 1500); // Wait 1.5 seconds before retracting
+        });
+
+
+        // --- COMMAND HISTORY & AUTOCOMPLETE SCRIPT ---
+        const commandInput = document.getElementById('command-input');
+        const commandForm = document.getElementById('command-form');
+        let history = [];
+        let historyIndex = -1;
+
+        commandForm.addEventListener('submit', function() {
+            if (commandInput.value) {
+                history.unshift(commandInput.value);
+                historyIndex = -1;
+            }
+        });
+
+        commandInput.addEventListener('keydown', function(e) {
+            if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (historyIndex < history.length - 1) {
+                    historyIndex++;
+                    commandInput.value = history[historyIndex];
+                }
+            } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (historyIndex > 0) {
+                    historyIndex--;
+                    commandInput.value = history[historyIndex];
+                } else {
+                    historyIndex = -1;
+                    commandInput.value = '';
+                }
+            }
+        });
+
+        const commandList = ['pwd', 'ls', 'cd ', 'mkdir ', 'rm ', 'status', 'exit', 'echo '];
+        commandInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Tab') {
+                e.preventDefault();
+                const currentVal = commandInput.value;
+                const suggestion = commandList.find(cmd => cmd.startsWith(currentVal));
+                if (suggestion) {
+                    commandInput.value = suggestion;
+                }
+            }
+        });
+    </script>
+</body>
+</html>
