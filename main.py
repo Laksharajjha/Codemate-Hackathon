@@ -2,6 +2,24 @@ import os
 import shutil
 import psutil
 
+# Help text for the new 'help' command
+HELP_TEXT = """
+PyTerminal v1.0 - Available Commands:
+  pwd                            - Print the current working directory.
+  ls                             - List files and directories in the current location.
+  cd <directory>                 - Change the current directory.
+  mkdir <directory>              - Create a new directory.
+  rm <file_or_directory>         - Remove a file or an entire directory.
+  touch <file>                   - Create a new empty file.
+  cat <file>                     - Display the content of a file.
+  cp <source> <destination>      - Copy a file or directory.
+  mv <source> <destination>      - Move or rename a file or directory.
+  echo "text" > <file>           - Write text to a file.
+  status                         - Show current CPU and Memory usage.
+  clear                          - Clear the terminal screen.
+  help                           - Display this help message.
+"""
+
 def process_command(command):
     """Processes a single command and returns the output as a string."""
     parts = command.split()
@@ -14,7 +32,10 @@ def process_command(command):
     elif cmd == "ls":
         try:
             items = os.listdir('.')
-            output_lines.extend(items)
+            if not items:
+                output_lines.append("Directory is empty.")
+            else:
+                output_lines.extend(items)
         except Exception as e:
             output_lines.append(f"ls: an error occurred: {e}")
 
@@ -69,23 +90,73 @@ def process_command(command):
 
     elif cmd == "echo":
         try:
-            # Handles 'echo "text" > filename'
             if len(parts) >= 4 and parts[-2] == '>':
                 filename = parts[-1]
-                # Join all parts between echo and >
                 text_to_write = " ".join(parts[1:-2]).strip('"\'')
-                
                 with open(filename, 'w') as f:
                     f.write(text_to_write + '\n')
                 output_lines.append(f"File '{filename}' created.")
-            # Handles simple 'echo text'
             else:
                 output_lines.append(" ".join(parts[1:]))
         except Exception as e:
             output_lines.append(f"echo: an error occurred: {e}")
+            
+    elif cmd == "touch":
+        try:
+            if len(parts) > 1:
+                filename = parts[1]
+                with open(filename, 'w'):
+                    pass
+                output_lines.append(f"File '{filename}' created.")
+            else:
+                output_lines.append("touch: missing operand")
+        except Exception as e:
+            output_lines.append(f"touch: an error occurred: {e}")
+    
+    elif cmd == "cat":
+        try:
+            if len(parts) > 1:
+                filename = parts[1]
+                with open(filename, 'r') as f:
+                    output_lines.append(f.read())
+            else:
+                output_lines.append("cat: missing operand")
+        except FileNotFoundError:
+            output_lines.append(f"cat: no such file: {parts[1]}")
+        except Exception as e:
+            output_lines.append(f"cat: an error occurred: {e}")
+
+    elif cmd == "cp":
+        try:
+            if len(parts) > 2:
+                source = parts[1]
+                destination = parts[2]
+                if os.path.isfile(source):
+                    shutil.copy(source, destination)
+                elif os.path.isdir(source):
+                    shutil.copytree(source, destination)
+                output_lines.append(f"Copied '{source}' to '{destination}'.")
+            else:
+                output_lines.append("cp: missing source or destination operand")
+        except Exception as e:
+            output_lines.append(f"cp: an error occurred: {e}")
+
+    elif cmd == "mv":
+        try:
+            if len(parts) > 2:
+                source = parts[1]
+                destination = parts[2]
+                shutil.move(source, destination)
+                output_lines.append(f"Moved '{source}' to '{destination}'.")
+            else:
+                output_lines.append("mv: missing source or destination operand")
+        except Exception as e:
+            output_lines.append(f"mv: an error occurred: {e}")
+    
+    elif cmd == "help":
+        output_lines.append(HELP_TEXT)
 
     elif not cmd:
-        # Don't return an error for an empty command
         pass
     
     else:
@@ -93,7 +164,6 @@ def process_command(command):
 
     return "\n".join(map(str, output_lines))
 
-# This part allows you to still run main.py as a CLI if you want to test
 if __name__ == "__main__":
     print("Terminal logic loaded. Run app.py to start the web server.")
     while True:
@@ -104,3 +174,4 @@ if __name__ == "__main__":
         result = process_command(user_input)
         if result:
             print(result)
+
